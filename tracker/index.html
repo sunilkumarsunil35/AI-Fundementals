@@ -1,0 +1,870 @@
+<title>AI Fundamentals Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a study notebook (same design as the Playwright and DSA trackers). Summary rail (daily log, progress, roadmap, topics, activity) sits beside the exercise ledger on wide screens; one column on phones. */
+:root {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --ink: #161a26;
+  --muted: #5a6275;
+  --line: #dde1ea;
+  --accent: #1f7a3a;
+  --accent-ink: #ffffff;
+  --accent-soft: #dff1e4;
+  --todo: #7b8396;
+  --todo-soft: #eceef3;
+  --att: #a8690f;
+  --att-soft: #fbefd9;
+  --ok: #19804a;
+  --ok-soft: #daf2e4;
+  --rev: #6a43c4;
+  --rev-soft: #ebe4fb;
+  --hard: #c0392f;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10131b; --surface: #181c27; --ink: #e8eaf1; --muted: #9ba2b5; --line: #2a3041;
+    --accent: #6fd38c; --accent-ink: #10131b; --accent-soft: #1b3324;
+    --todo: #7d8599; --todo-soft: #222736; --att: #e3a84c; --att-soft: #392c15;
+    --ok: #4fc684; --ok-soft: #163222; --rev: #b59dff; --rev-soft: #2b2445; --hard: #ff7d73;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10131b; --surface: #181c27; --ink: #e8eaf1; --muted: #9ba2b5; --line: #2a3041;
+  --accent: #6fd38c; --accent-ink: #10131b; --accent-soft: #1b3324;
+  --todo: #7d8599; --todo-soft: #222736; --att: #e3a84c; --att-soft: #392c15;
+  --ok: #4fc684; --ok-soft: #163222; --rev: #b59dff; --rev-soft: #2b2445; --hard: #ff7d73;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--bg); }
+body { color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+/* Header */
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+header.top h1 { font-size: clamp(28px, 6vw, 40px); font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+header.top h1 span { color: var(--accent); }
+header.top p { margin: 6px 0 0; color: var(--muted); }
+.sync { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; background: var(--surface); }
+.sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--todo); }
+.sync[data-state="synced"]::before { background: var(--ok); }
+.sync[data-state="saving"]::before { background: var(--att); }
+.sync[data-state="local"]::before, .sync[data-state="readonly"]::before { background: var(--rev); }
+.sync[data-state="error"]::before { background: var(--hard); }
+
+.shell { display: grid; gap: 24px; }
+@media (min-width: 960px) {
+  .shell { grid-template-columns: 360px minmax(0, 1fr); align-items: start; }
+  .rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
+}
+.rail { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { font-size: 17px; font-weight: 600; }
+
+/* Summary */
+.score { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.score b { font-family: var(--display); font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
+.score span { color: var(--muted); }
+.stack { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--todo-soft); }
+.stack i { display: block; height: 100%; transition: width .3s ease; }
+.stack .s-solved { background: var(--ok); }
+.stack .s-revise { background: var(--rev); }
+.stack .s-attempted { background: var(--att); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; background: var(--c); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { border-top: 1px solid var(--line); padding-top: 8px; }
+.stat b { display: block; font-family: var(--mono); font-size: 22px; font-weight: 600; }
+.stat span { font-size: 12px; color: var(--muted); }
+.next { border-radius: 8px; background: var(--accent-soft); padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.next a { font-weight: 600; text-decoration: none; }
+.next a:hover { text-decoration: underline; }
+
+/* Roadmap */
+.weeks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.week { text-align: left; border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.week:hover { border-color: var(--accent); }
+.week[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.week .wk { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+.week .wk em { font-style: normal; color: var(--ok); }
+.week .wt { font-size: 13px; line-height: 1.3; }
+.week.current .wk { color: var(--accent); font-weight: 600; }
+.bar { height: 4px; border-radius: 999px; background: var(--todo-soft); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--ok); }
+
+/* Topics */
+.topics { display: flex; flex-direction: column; }
+.topic { display: grid; grid-template-columns: minmax(0, 1fr) 80px 44px; align-items: center; gap: 10px; padding: 7px 8px; margin: 0 -8px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; text-align: left; }
+.topic:hover { background: var(--todo-soft); }
+.topic[aria-pressed="true"] { background: var(--accent-soft); }
+.topic .n { font-size: 12px; text-align: right; color: var(--muted); }
+
+/* Heatmap */
+.heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; }
+.heat i { aspect-ratio: 1; border-radius: 2px; background: var(--todo-soft); max-width: 100%; }
+.heat i[data-l="1"] { background: color-mix(in srgb, var(--ok) 35%, var(--todo-soft)); }
+.heat i[data-l="2"] { background: color-mix(in srgb, var(--ok) 65%, var(--todo-soft)); }
+.heat i[data-l="3"] { background: var(--ok); }
+.heat i.today { outline: 1px solid var(--ink); outline-offset: 0; }
+.heat-foot { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+/* Ledger */
+.ledger { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.search { flex: 1 1 220px; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.filter-note { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.linkbtn { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; text-decoration: underline; font-size: 13px; }
+
+.group { display: flex; flex-direction: column; }
+.group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 0 4px 6px; border-bottom: 2px solid var(--ink); }
+.group-head h3 { font-size: 19px; font-weight: 600; }
+.group-head span { font-size: 13px; color: var(--muted); }
+.row { display: grid; grid-template-columns: 116px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+.row .title { font-weight: 500; overflow-wrap: anywhere; }
+.row[data-status="solved"] .title, .row[data-status="revise"] .title { color: var(--muted); }
+.meta { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.diff { font-family: var(--mono); font-weight: 600; }
+.diff[data-d="E"] { color: var(--ok); }
+.diff[data-d="M"] { color: var(--att); }
+.diff[data-d="H"] { color: var(--hard); }
+.acts { display: flex; gap: 4px; align-items: center; }
+.act { border: 1px solid transparent; background: transparent; border-radius: 6px; padding: 4px 8px; font-size: 13px; color: var(--accent); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.act:hover { border-color: var(--line); }
+.act.has-note { color: var(--rev); font-weight: 600; }
+.notes { grid-column: 2 / -1; }
+.notes textarea { width: 100%; min-height: 72px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--bg); font-size: 14px; }
+.notes .hint { font-size: 12px; color: var(--muted); }
+
+.status { appearance: none; -webkit-appearance: none; border: 1px solid transparent; border-radius: 999px; padding: 5px 26px 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 14px) 52%, calc(100% - 10px) 52%; background-size: 4px 4px; background-repeat: no-repeat; }
+.status[data-s="todo"] { background-color: var(--todo-soft); color: var(--todo); }
+.status[data-s="attempted"] { background-color: var(--att-soft); color: var(--att); }
+.status[data-s="solved"] { background-color: var(--ok-soft); color: var(--ok); }
+.status[data-s="revise"] { background-color: var(--rev-soft); color: var(--rev); }
+.status:disabled { cursor: default; opacity: .85; }
+.status option { background: var(--surface); color: var(--ink); }
+
+.empty { padding: 28px 4px; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .row { grid-template-columns: 104px minmax(0, 1fr); }
+  .acts { grid-column: 2; margin-left: -8px; }
+  .notes { grid-column: 1 / -1; }
+}
+
+/* Add form */
+details.add { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); padding: 12px 16px; }
+details.add summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 12px; }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+.form input, .form select { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--bg); color: var(--ink); min-width: 0; }
+.form .wide { grid-column: 1 / -1; }
+.btn { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 9px 16px; font-weight: 600; cursor: pointer; justify-self: start; }
+.err { color: var(--hard); font-size: 13px; }
+.danger { color: var(--hard); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Daily log */
+.log-form { display: grid; grid-template-columns: 1fr 96px; gap: 8px; }
+.log-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+.log-form .wide { grid-column: 1 / -1; }
+.log-form input, .log-form textarea { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--bg); color: var(--ink); min-width: 0; }
+.log-form textarea { min-height: 64px; resize: vertical; }
+.log-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.log-item { width: 100%; border: 0; background: transparent; text-align: left; padding: 6px 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
+.log-item:hover { background: var(--todo-soft); }
+.log-d { font-weight: 600; }
+.log-n { grid-column: 1 / -1; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.empty-log { font-size: 13px; color: var(--muted); }
+.acts { flex-wrap: wrap; }
+.task { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.next .task { margin: 0; color: var(--ink); }
+.goal { font-size: 13px; }
+.act.ask { color: var(--rev); }
+.next .act.ask { align-self: flex-start; padding-left: 0; }
+.week-goal { flex-basis: 100%; color: var(--ink); background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>AI<span>Fundamentals</span></h1>
+      <p>Daily tracker · 8-week AI for SDETs plan · learn with Claude · <span id="total-count" class="mono">0</span> exercises</p>
+    </div>
+    <span class="sync" id="sync" data-state="loading" role="status">Connecting…</span>
+  </header>
+
+  <div class="shell">
+    <aside class="rail">
+      <section class="panel" aria-labelledby="today-h">
+        <h2 id="today-h" class="label">Today's log</h2>
+        <form class="log-form" id="log-form" novalidate>
+          <label>Date<input id="l-date" type="date" required></label>
+          <label>Minutes<input id="l-min" type="number" min="0" max="1440" step="5" inputmode="numeric" placeholder="60"></label>
+          <label class="wide">What I learned or got stuck on
+            <textarea id="l-note" maxlength="2000" placeholder="e.g. Cosine ignores vector length. Asked Claude for 2 hints on MMR, solved it without the solution."></textarea>
+          </label>
+          <button class="btn" type="submit" id="l-save">Save today</button>
+          <span class="err wide" id="l-err" hidden></span>
+        </form>
+        <div class="stats">
+          <div class="stat"><b id="log-days">0</b><span>days logged</span></div>
+          <div class="stat"><b id="log-week">0</b><span>min last 7 days</span></div>
+          <div class="stat"><b id="log-total">0</b><span>hours total</span></div>
+        </div>
+        <ol class="log-list" id="log-list"></ol>
+      </section>
+
+      <section class="panel" aria-labelledby="sum-h">
+        <h2 id="sum-h" class="label">Progress</h2>
+        <div class="score"><b class="mono" id="done">0</b><span>of <span id="total" class="mono">0</span> exercises done</span></div>
+        <div class="stack" id="stack" aria-hidden="true"></div>
+        <div class="legend">
+          <span style="--c: var(--ok)">Done <b class="mono" id="n-solved">0</b></span>
+          <span style="--c: var(--rev)">Revise <b class="mono" id="n-revise">0</b></span>
+          <span style="--c: var(--att)">Attempted <b class="mono" id="n-attempted">0</b></span>
+          <span style="--c: var(--todo)">To do <b class="mono" id="n-todo">0</b></span>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="streak">0</b><span>day streak</span></div>
+          <div class="stat"><b id="week-solves">0</b><span>done last 7 days</span></div>
+          <div class="stat"><b id="easy-med-hard">0·0·0</b><span>easy · med · hard</span></div>
+        </div>
+        <div class="next" id="next"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="road-h">
+        <h2 id="road-h" class="label">Roadmap</h2>
+        <div class="weeks" id="weeks"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="topic-h">
+        <h2 id="topic-h" class="label">Topics</h2>
+        <div class="topics" id="topics"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="heat-h">
+        <h2 id="heat-h" class="label">Study days, last 12 weeks</h2>
+        <div class="heat" id="heat" role="img" aria-label="Daily activity heatmap"></div>
+        <div class="heat-foot"><span id="heat-start"></span><span>Today</span></div>
+      </section>
+    </aside>
+
+    <main class="ledger">
+      <div class="toolbar">
+        <label for="q" class="label" hidden>Search exercises</label>
+        <input id="q" class="search" type="search" placeholder="Search by name or function, like cosine_similarity" autocomplete="off">
+      </div>
+      <div class="toolbar">
+        <div class="chips" id="status-chips" role="group" aria-label="Filter by status"></div>
+        <div class="chips" id="diff-chips" role="group" aria-label="Filter by difficulty"></div>
+      </div>
+      <div class="filter-note" id="filter-note" hidden></div>
+      <div id="list"></div>
+
+      <details class="add" id="add">
+        <summary>Add your own exercise</summary>
+        <form class="form" id="add-form" novalidate>
+          <label class="wide">Exercise name
+            <input id="f-title" required maxlength="120" placeholder="e.g. Write a golden set for our support chatbot">
+          </label>
+          <label>Topic
+            <select id="f-topic"></select>
+          </label>
+          <label>Difficulty
+            <select id="f-diff"><option value="E">Easy</option><option value="M" selected>Medium</option><option value="H">Hard</option></select>
+          </label>
+          <label class="wide">Link (optional)
+            <input id="f-url" type="url" maxlength="300" placeholder="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests">
+          </label>
+          <button class="btn" type="submit">Add exercise</button>
+          <span class="err wide" id="f-err" hidden></span>
+        </form>
+      </details>
+    </main>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const REPO = "https://github.com/sunilkumarsunil35/AI-Fundementals/blob/main/src/";
+  const CLAUDE_NEW = "https://claude.ai/new?q=";
+  const STATUSES = [["todo", "To do"], ["attempted", "Attempted"], ["solved", "Done"], ["revise", "Revise"]];
+  const DIFFS = { E: "Easy", M: "Medium", H: "Hard" };
+
+  // Generated from src/solutions by tools/build_catalog.py: [{id, name, items: [{fn, title, diff, kind, doc, task}]}]
+  const CATALOG = [{"id": "ml_basics", "name": "ML basics", "items": [{"fn": "mean_and_std", "title": "Mean and standard deviation", "diff": "E", "kind": "problems", "doc": "https://developers.google.com/machine-learning/crash-course", "task": "Return the mean and the population standard deviation of `values`."}, {"fn": "min_max_scale", "title": "Min-max scaling", "diff": "E", "kind": "problems", "doc": "https://developers.google.com/machine-learning/crash-course", "task": "Rescale `values` into the range 0..1: the smallest becomes 0, the largest 1. If every value is the same, return all zeros."}, {"fn": "train_test_split", "title": "Train/test split with a seed", "diff": "E", "kind": "problems", "doc": "https://developers.google.com/machine-learning/crash-course", "task": "Shuffle a copy of `rows` with random.Random(seed), then put the first round(len * test_ratio) rows in the test set and the rest in the training set. Return (train, test)."}, {"fn": "predict_linear", "title": "Predict with a linear model", "diff": "E", "kind": "problems", "doc": "https://developers.google.com/machine-learning/crash-course", "task": "Return the prediction of a linear model: the dot product of `weights` and `x`, plus `bias`."}, {"fn": "fit_line", "title": "Fit a line (least squares)", "diff": "M", "kind": "problems", "doc": "https://en.wikipedia.org/wiki/Simple_linear_regression", "task": "Fit y = slope * x + intercept by least squares and return (slope, intercept)."}, {"fn": "z_score", "title": "Z-score standardisation", "diff": "E", "kind": "practice", "doc": "https://developers.google.com/machine-learning/crash-course", "task": "Standardise `values`: subtract the mean and divide by the population standard deviation. If the deviation is 0, return all zeros."}, {"fn": "one_hot", "title": "One-hot encoding", "diff": "E", "kind": "practice", "doc": "https://developers.google.com/machine-learning/crash-course", "task": "Turn category labels into one-hot vectors. Return (classes, vectors) where classes is the sorted list of distinct labels and each vector has a 1 at its label's position."}, {"fn": "mse_loss", "title": "Mean squared error loss", "diff": "E", "kind": "practice", "doc": "https://developers.google.com/machine-learning/crash-course", "task": "Return the mean squared error between the true and predicted values."}, {"fn": "knn_predict", "title": "k-nearest neighbours", "diff": "M", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm", "task": "k-nearest neighbours: find the k training points closest to `query` (Euclidean distance) and return the most common label among them. Break a tie in votes with the label of the nearest point among the tied labels."}, {"fn": "gradient_descent_step", "title": "One gradient descent step", "diff": "M", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/Gradient_descent", "task": "Do one step of gradient descent for y = w * x + b with mean squared error loss. Return the new (w, b)."}, {"fn": "logistic_predict", "title": "Logistic regression predict", "diff": "M", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/Logistic_regression", "task": "Logistic regression: squash the linear score through the sigmoid 1 / (1 + e^-z). Return the probability and the class, 1 if the probability is at least `threshold`, else 0."}, {"fn": "k_fold_indices", "title": "k-fold cross-validation", "diff": "M", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/Cross-validation_(statistics)", "task": "Split indices 0..n-1 into k folds of consecutive indices (the first n % k folds get one extra). Return k (train_indices, test_indices) pairs, where each fold is the test set once."}]}, {"id": "metrics", "name": "Evaluation metrics", "items": [{"fn": "accuracy", "title": "Accuracy", "diff": "E", "kind": "problems", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Return the fraction of predictions that equal the true label."}, {"fn": "confusion_counts", "title": "Confusion counts (TP/FP/FN/TN)", "diff": "E", "kind": "problems", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Count true positives, false positives, false negatives and true negatives for the class `positive`. Return {\"tp\": .., \"fp\": .., \"fn\": .., \"tn\": ..}."}, {"fn": "precision_recall_f1", "title": "Precision, recall and F1", "diff": "E", "kind": "problems", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Return (precision, recall, f1) for the class `positive`. Any ratio with a zero denominator is 0.0."}, {"fn": "mae_rmse", "title": "MAE and RMSE", "diff": "E", "kind": "problems", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Return the mean absolute error and the root mean squared error."}, {"fn": "confusion_matrix", "title": "Multi-class confusion matrix", "diff": "M", "kind": "practice", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Return a square matrix where row i is the true label labels[i] and column j is the predicted label labels[j], each cell counting how often that pair happened."}, {"fn": "macro_f1", "title": "Macro F1", "diff": "M", "kind": "practice", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Return the F1 averaged over every label that appears in y_true or y_pred, each label weighted equally."}, {"fn": "normalize_answer", "title": "Normalise an answer", "diff": "E", "kind": "practice", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Normalise an answer for comparison: lower case, remove punctuation, remove the articles a, an and the, and collapse whitespace to single spaces."}, {"fn": "exact_match", "title": "Exact match for LLM answers", "diff": "E", "kind": "practice", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Return True if the two answers match after normalising both: lower case, no punctuation, no articles (a, an, the) and single spaces."}, {"fn": "token_f1", "title": "Token F1 (SQuAD)", "diff": "M", "kind": "practice", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Return the F1 of the overlapping words between the normalised prediction and reference (counting repeated words as often as they appear in both). 0.0 if either is empty."}, {"fn": "rouge_l", "title": "ROUGE-L", "diff": "H", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/ROUGE_(metric)", "task": "ROUGE-L: the F1 built from the longest common subsequence of words (lower-cased, split on spaces) between prediction and reference. 0.0 if either is empty."}, {"fn": "best_threshold", "title": "Pick the best threshold", "diff": "M", "kind": "practice", "doc": "https://scikit-learn.org/stable/modules/model_evaluation.html", "task": "Each score is a model's confidence that the label is 1. For each threshold, predict 1 when score >= threshold, and return the threshold with the highest F1 (the first one on a tie)."}, {"fn": "pass_at_k", "title": "pass@k", "diff": "M", "kind": "practice", "doc": "https://arxiv.org/abs/2107.03374", "task": "pass@k: you sampled n answers and c of them were correct. Return the chance that at least one of k answers drawn at random from those n is correct: 1 - C(n - c, k) / C(n, k)."}]}, {"id": "nlp", "name": "Text and tokens", "items": [{"fn": "normalize_text", "title": "Normalise text", "diff": "E", "kind": "problems", "doc": "https://huggingface.co/learn/llm-course/chapter6/1", "task": "Lower-case `text`, remove punctuation and collapse runs of whitespace into single spaces (no leading or trailing space)."}, {"fn": "tokenize", "title": "Word tokenizer", "diff": "E", "kind": "problems", "doc": "https://huggingface.co/learn/llm-course/chapter6/1", "task": "Split `text` into lower-case word tokens: runs of letters, digits or apostrophes."}, {"fn": "ngrams", "title": "N-grams", "diff": "E", "kind": "problems", "doc": "https://huggingface.co/learn/llm-course/chapter6/1", "task": "Return every run of n consecutive tokens, as tuples, in order."}, {"fn": "bag_of_words", "title": "Bag of words", "diff": "M", "kind": "problems", "doc": "https://en.wikipedia.org/wiki/Bag-of-words_model", "task": "Tokenize each document with tokenize(). Return (vocab, vectors): vocab is the sorted list of every token seen, and each document's vector counts how often each vocab word appears in it."}, {"fn": "tf_idf", "title": "TF-IDF", "diff": "M", "kind": "problems", "doc": "https://en.wikipedia.org/wiki/Tf%E2%80%93idf", "task": "Return a TF-IDF weight for every token in every document (tokens from tokenize()). tf = count of the token in the document / number of tokens in the document. idf = ln((1 + N) / (1 + df)) + 1, where N is the number of documents and df how many contain the token. Weight = tf * idf."}, {"fn": "estimate_tokens", "title": "Estimate tokens", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/token-counting", "task": "Estimate how many tokens `text` costs with the rule of thumb of about 4 characters per token, rounded up. Empty text is 0 tokens."}, {"fn": "sentence_split", "title": "Split sentences", "diff": "E", "kind": "practice", "doc": "https://huggingface.co/learn/llm-course/chapter6/1", "task": "Split `text` into sentences after \".\", \"!\" or \"?\" followed by whitespace. Strip each sentence and drop empty ones."}, {"fn": "remove_stopwords", "title": "Remove stop words", "diff": "E", "kind": "practice", "doc": "https://huggingface.co/learn/llm-course/chapter6/1", "task": "Return the tokens that are not in `stopwords` (compare in lower case), keeping order."}, {"fn": "jaccard", "title": "Jaccard similarity", "diff": "E", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/Jaccard_index", "task": "Return the Jaccard similarity of the sets of lower-case words in `a` and `b` (split on whitespace): size of the intersection / size of the union. Two empty strings give 1.0."}, {"fn": "edit_distance", "title": "Edit distance", "diff": "M", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/Levenshtein_distance", "task": "Return the Levenshtein distance: the fewest single-character inserts, deletes or substitutions that turn `a` into `b`."}, {"fn": "chunk_words", "title": "Chunk text with overlap", "diff": "M", "kind": "practice", "doc": "https://huggingface.co/learn/llm-course/chapter6/1", "task": "Split `text` into chunks of `size` words, where each chunk starts `size - overlap` words after the previous one. Stop once a chunk reaches the last word. Join each chunk's words with single spaces."}, {"fn": "bpe_merges", "title": "Byte-pair encoding merges", "diff": "H", "kind": "practice", "doc": "https://huggingface.co/learn/llm-course/chapter6/5", "task": "Learn byte-pair-encoding merges. Start with every word as a list of characters. Repeat `num_merges` times: count every adjacent pair of symbols across all words, pick the most frequent pair (the alphabetically smallest on a tie), and merge every occurrence of it into one symbol. Stop early if no pairs are left. Return the merges in the order learned."}]}, {"id": "embeddings", "name": "Embeddings and similarity", "items": [{"fn": "dot", "title": "Dot product", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Return the dot product of two vectors of the same length."}, {"fn": "norm", "title": "Vector length", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Return the length (L2 norm) of vector `v`."}, {"fn": "cosine_similarity", "title": "Cosine similarity", "diff": "E", "kind": "problems", "doc": "https://en.wikipedia.org/wiki/Cosine_similarity", "task": "Return the cosine of the angle between `a` and `b`: dot(a, b) / (|a| * |b|). Return 0.0 if either vector is all zeros."}, {"fn": "normalize", "title": "Normalise a vector", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Return `v` scaled to length 1. A zero vector stays all zeros."}, {"fn": "top_k_similar", "title": "Top-k similar", "diff": "M", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Return the ids of the k vectors most cosine-similar to `query`, best first. Break ties by id in alphabetical order."}, {"fn": "euclidean_distance", "title": "Euclidean distance", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Return the straight-line distance between two vectors."}, {"fn": "mean_pool", "title": "Mean pooling", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Average a list of same-length token vectors into one vector (element by element)."}, {"fn": "VectorStore", "title": "In-memory vector store", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "An in-memory vector database: store vectors with metadata and search them by cosine similarity."}, {"fn": "mmr", "title": "Maximal marginal relevance", "diff": "H", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Maximal marginal relevance: pick k ids one at a time. Each step choose the candidate with the highest lambda_ * cos(query, c) - (1 - lambda_) * max(cos(c, s) for s already picked) (the second term is 0 for the first pick). Break ties by id. Return the ids in the order picked."}, {"fn": "group_similar", "title": "Group similar vectors", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Greedy clustering: go through the ids in sorted order. Put each one into the first existing group whose first member has cosine similarity >= threshold with it, otherwise start a new group. Return the groups."}, {"fn": "find_duplicates", "title": "Find duplicate bug reports", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/embeddings", "task": "Embed every text with `embed`, then return every pair of ids (a, b) with a < b whose cosine similarity is at least `threshold`, sorted."}]}, {"id": "prompts", "name": "Prompt engineering with Claude", "items": [{"fn": "fill_template", "title": "Fill a prompt template", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview", "task": "Fill the {name} placeholders in `template` from `values`. If any placeholder has no value, raise KeyError naming every missing one (sorted, comma-separated)."}, {"fn": "build_request", "title": "Build a Messages API request", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/working-with-messages", "task": "Build the keyword arguments for client.messages.create(): model MODEL, max_tokens, the `system` prompt, and messages made of the (user, assistant) turns in `history` followed by `user_input`."}, {"fn": "few_shot_prompt", "title": "Few-shot prompt", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices", "task": "Build a few-shot prompt: the instruction, then each example as <example><input>..</input><output>..</output></example> on its own line, then <input>query</input>. Join the parts with newlines."}, {"fn": "response_text", "title": "Read the response text", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview", "task": "Return the text of a Messages API response: join the .text of every block whose type is \"text\". Skip other blocks (thinking, tool_use)."}, {"fn": "ask_claude", "title": "Ask Claude", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview", "task": "Send `question` as one user message (model MODEL, max_tokens 1024) and return the reply text."}, {"fn": "extract_json", "title": "Extract JSON from a reply", "diff": "M", "kind": "problems", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview", "task": "Pull the JSON out of a model reply. If there is a ```json ... ``` (or plain ```) fenced block, parse its contents. Otherwise parse from the first \"{\" or \"[\" to the matching last \"}\" or \"]\". Raise ValueError if there is no JSON."}, {"fn": "extract_tag", "title": "Extract XML tags", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#structure-prompts-with-xml-tags", "task": "Return the stripped contents of every <tag>...</tag> in `text`, in order."}, {"fn": "validate_schema", "title": "Validate output against a schema", "diff": "H", "kind": "practice", "doc": "https://json-schema.org/understanding-json-schema/reference", "task": "Check `data` against a small subset of JSON Schema: \"type\" (object, array, string, integer, number, boolean), \"required\", \"properties\", \"items\" and \"enum\". Return a list of error strings like \"$.age: expected integer\" or \"$: missing name\". An empty list means valid."}, {"fn": "structured_request", "title": "Structured outputs request", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/structured-outputs", "task": "Build messages.create() kwargs that ask for JSON matching `schema` with structured outputs: model MODEL, max_tokens 1024, one user message, and output_config {\"format\": {\"type\": \"json_schema\", \"schema\": schema}}."}, {"fn": "classify", "title": "Classify with Claude", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview", "task": "Ask Claude to classify `text` into exactly one of `labels`, answering inside <label></label> tags. Return the label (matched case-insensitively), or \"unknown\" if the reply holds no valid label."}, {"fn": "summarize_then_extract", "title": "Prompt chaining", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts", "task": "Prompt chaining. Call 1: ask for a one-paragraph summary of `document`. Call 2: send that summary and ask for the action items as a JSON array of strings. Return (summary, action_items)."}, {"fn": "check_stop_reason", "title": "Handle stop reasons", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons", "task": "Read response.stop_reason and return (status, text): \"ok\" for end_turn or stop_sequence, \"truncated\" for max_tokens, \"refused\" for refusal, \"tool_use\" for tool_use, otherwise \"unknown\". The text is the joined text blocks."}, {"fn": "system_prompt_for_tester", "title": "System prompt for a QA assistant", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#give-claude-a-role", "task": "Write a system prompt for a QA assistant: \"You are a senior SDET testing {product}.\", then \"Follow these rules:\" and each rule as a \"- \" bullet, then \"If you are unsure, say so instead of guessing.\" Join lines with newlines."}]}, {"id": "llm_testing", "name": "Testing LLM apps", "items": [{"fn": "missing_keywords", "title": "Missing keywords check", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Return the keywords that do not appear in `text` (case-insensitive), in their original order."}, {"fn": "run_golden_set", "title": "Run a golden data set", "diff": "M", "kind": "problems", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Run `fn` on each case's \"input\" and check that the output contains every keyword in the case's \"expected\" list (case-insensitive). Return {\"passed\": n, \"failed\": n, \"failures\": [ids of failed cases]}. A case whose fn call raises counts as failed."}, {"fn": "consistency_rate", "title": "Consistency rate", "diff": "M", "kind": "problems", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Call fn(prompt) `runs` times. Compare answers after stripping and lower-casing. Return the fraction of runs that gave the most common answer."}, {"fn": "call_with_retry", "title": "Retry 429/529 with backoff", "diff": "M", "kind": "problems", "doc": "https://platform.claude.com/docs/en/api/errors", "task": "Call fn(). If it raises an exception whose `status_code` is in RETRYABLE, sleep base_delay * 2**n (n = 0, 1, 2...) and try again, up to `retries` retries. Re-raise anything else at once, and the last error when retries run out."}, {"fn": "parse_judge_score", "title": "Parse a judge score", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Read a 1-5 score from a judge model's reply. Accept \"<score>4</score>\" or \"Score: 4\" (any case). Raise ValueError if there is no score or it is outside 1-5."}, {"fn": "judge_prompt", "title": "LLM-as-judge prompt", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Build a grading prompt that puts the question, answer and rubric in <question>, <answer> and <rubric> tags (one per line, in that order) and ends with: \"Think it through, then give a score from 1 to 5 inside <score></score> tags.\""}, {"fn": "llm_judge", "title": "LLM-as-judge", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Send judge_prompt(...) to Claude (model MODEL, max_tokens 1024) and return the score in the reply. Raise ValueError if the reply holds no <score> tag with 1-5."}, {"fn": "regressions", "title": "Semantic regression check", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Compare today's answers with the approved baseline answers, id by id. Return the sorted ids that are missing from `current` or whose similarity to the baseline is below `threshold`."}, {"fn": "latency_stats", "title": "Latency p50/p95", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Return {\"p50\": .., \"p95\": .., \"max\": ..} using the nearest-rank percentile: sort the values and take the one at position ceil(p/100 * n) (1-based)."}, {"fn": "run_cost", "title": "Cost of a test run", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/about-claude/pricing", "task": "Each usage dict has \"input_tokens\" and \"output_tokens\". Prices are dollars per million tokens. Return the total cost in dollars, rounded to 6 decimal places."}, {"fn": "CachingClient", "title": "Caching client", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Wrap a client so identical messages.create() requests are answered from a cache. Tests that rerun the same prompt cost nothing after the first call."}, {"fn": "ab_compare", "title": "A/B compare two prompts", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Run both prompt versions on every input and score each output with score(input, output). Return {\"a\": wins for a, \"b\": wins for b, \"tie\": ties}."}, {"fn": "assert_length", "title": "Assert answer length", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests", "task": "Raise AssertionError with a helpful message if `text` has fewer than min_words or more than max_words words (split on whitespace)."}]}, {"id": "rag", "name": "Retrieval-augmented generation", "items": [{"fn": "split_documents", "title": "Split documents into chunks", "diff": "M", "kind": "problems", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Split each document (in sorted id order) into chunks of `size` words that start `size - overlap` words apart, stopping once a chunk reaches the end. Return dicts {\"id\": \"<doc>#<n>\", \"doc\": doc id, \"text\": chunk words joined by spaces}, n counting from 0 within each document."}, {"fn": "keyword_score", "title": "Keyword similarity score", "diff": "E", "kind": "problems", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Return the cosine similarity of the word-count vectors of `query` and `text`. Words are runs of lower-case letters and digits. 0.0 if either has no words."}, {"fn": "retrieve", "title": "Retrieve top-k chunks", "diff": "M", "kind": "problems", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Return the k chunks with the highest keyword_score for `query`, best first, ties broken by chunk id. Leave out chunks that score 0."}, {"fn": "build_rag_prompt", "title": "Build a grounded prompt", "diff": "E", "kind": "problems", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Build the prompt: \"Answer using only the documents below. Cite each fact with its id in square brackets, like [doc#0]. If the documents don't contain the answer, say \"I don't know\".\" then each chunk as <document id=\"ID\">TEXT</document> on its own line, then <question>QUESTION</question>."}, {"fn": "answer_with_rag", "title": "Answer with RAG", "diff": "M", "kind": "problems", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Retrieve the top k chunks, send build_rag_prompt(...) to Claude (model MODEL, max_tokens 1024) and return (answer text, sorted unique ids cited in square brackets in the answer)."}, {"fn": "extract_citations", "title": "Extract citations", "diff": "E", "kind": "practice", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Return every id cited as [something#number] in `answer`, in order of first appearance, without duplicates."}, {"fn": "invalid_citations", "title": "Catch made-up citations", "diff": "E", "kind": "practice", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Return the cited ids that are not in `chunk_ids` (made-up sources), in order of appearance."}, {"fn": "recall_at_k", "title": "Recall@k", "diff": "E", "kind": "practice", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Return the fraction of `relevant` ids found in the first k retrieved ids."}, {"fn": "mean_reciprocal_rank", "title": "Mean reciprocal rank", "diff": "M", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/Mean_reciprocal_rank", "task": "For each query, take 1 / (1-based rank of the first relevant id), or 0 if none is retrieved. Return the mean over all queries."}, {"fn": "groundedness", "title": "Groundedness score", "diff": "M", "kind": "practice", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Split `answer` into sentences (after . ! or ? plus whitespace). A sentence is supported if at least `threshold` of its words appear in `context` (words: lower-case letters and digits). Return the fraction of sentences that are supported (1.0 for an empty answer)."}, {"fn": "bm25_scores", "title": "BM25 ranking", "diff": "H", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/Okapi_BM25", "task": "Score each doc for `query` with BM25. For each query word w found in the doc: idf = ln((N - df + 0.5) / (df + 0.5) + 1), and the term adds idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * len(doc) / avg_len)). Words are lower-case letters and digits; lengths count words."}, {"fn": "hybrid_rank", "title": "Hybrid ranking", "diff": "M", "kind": "practice", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Min-max scale each score dict to 0..1 (all-equal scores become 0), then rank ids by alpha * keyword + (1 - alpha) * vector, best first, ties by id. An id missing from one dict scores 0 there."}, {"fn": "context_budget", "title": "Fit chunks in a context budget", "diff": "E", "kind": "practice", "doc": "https://www.anthropic.com/engineering/contextual-retrieval", "task": "Keep chunks in order while their total estimated tokens (ceil(len(text) / 4) each) fit in `max_tokens`; stop at the first one that doesn't fit."}]}, {"id": "agents", "name": "Tool use and agents", "items": [{"fn": "make_tool", "title": "Define a tool", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Build a Claude tool definition: {\"name\", \"description\", \"input_schema\"} where input_schema is {\"type\": \"object\", \"properties\": {param: {\"type\": type, \"description\": desc}}, \"required\": required}. `params` maps each parameter name to (json type, description)."}, {"fn": "tool_calls", "title": "Read tool calls", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Return (id, name, input) for every block of type \"tool_use\" in response.content, in order."}, {"fn": "tool_result", "title": "Build a tool result", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Build a tool_result block: {\"type\": \"tool_result\", \"tool_use_id\": ..., \"content\": str(output)}, plus \"is_error\": True when is_error is set."}, {"fn": "execute_tool_calls", "title": "Execute tool calls safely", "diff": "M", "kind": "problems", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Run every tool call in `response` with registry[name](**input) and return one tool_result per call, in order. An unknown tool gives an error result \"unknown tool: NAME\"; an exception gives an error result with the exception message."}, {"fn": "agent_loop", "title": "Agent loop", "diff": "H", "kind": "problems", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools", "task": "Run the agent loop. Send the user message with `tools` (model MODEL, max_tokens 1024). While the reply's stop_reason is \"tool_use\": append the assistant reply (role \"assistant\", content = response.content), run the tools, append one user message holding all the tool_result blocks, and call again. Return the final reply's text. Raise RuntimeError if Claude still wants tools after `max_steps` calls."}, {"fn": "validate_tool_input", "title": "Validate tool input", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Check tool `inputs` against an input_schema: every required key is present (\"missing X\"), there are no keys outside properties (\"unexpected X\"), and values match the property \"type\" (string, integer, number, boolean, array, object; \"X: expected T\"). Return the errors, missing first, then unexpected, then type errors in key order."}, {"fn": "safe_calculate", "title": "Safe calculator tool", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Evaluate an arithmetic expression with numbers, + - * / ** and parentheses, without eval(). Raise ValueError for anything else (names, calls, attributes...)."}, {"fn": "tools_used", "title": "Tool trajectory", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Go through a conversation's messages and return the name of every tool_use block in assistant messages, in order. Content blocks may be dicts or objects with .type and .name."}, {"fn": "apply_policy", "title": "Tool approval policy", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Each call is (id, name, input). policy maps tool name to \"allow\", \"deny\" or \"ask\"; tools not in the policy are \"ask\". For \"ask\", call approve(name, input). Return (allowed ids, blocked ids)."}, {"fn": "parse_plan", "title": "Parse a plan", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Return the steps of a numbered plan (\"1. Do this\" or \"2) Do that\", one per line), stripped, in order. Ignore other lines."}, {"fn": "tool_from_function", "title": "Tool schema from a function", "diff": "H", "kind": "practice", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "Build a Claude tool definition from a Python function: name = function name, description = its docstring (cleaned with inspect.getdoc), and one property per parameter typed from its annotation (str string, int integer, float number, bool boolean, list array, dict object). Parameters without a default are required."}, {"fn": "budgeted_steps", "title": "Agent token budget", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview", "task": "An agent reports usage after each step ({\"input_tokens\", \"output_tokens\"}). Return how many steps fit before the running total of all tokens would exceed `budget_tokens`."}]}, {"id": "guardrails", "name": "Safety, guardrails and cost", "items": [{"fn": "redact_pii", "title": "Redact PII", "diff": "M", "kind": "problems", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks", "task": "Replace emails with [EMAIL], card numbers (13-16 digits, optionally split by spaces or dashes) with [CARD], and phone numbers (an optional +, then 10-12 digits, optionally split by spaces or dashes) with [PHONE]. Do cards before phones."}, {"fn": "looks_like_injection", "title": "Detect prompt injection", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks", "task": "Return True if `text` matches any regex in INJECTION_PATTERNS (case-insensitive)."}, {"fn": "estimate_cost", "title": "Estimate cost", "diff": "E", "kind": "problems", "doc": "https://platform.claude.com/docs/en/about-claude/pricing", "task": "`prices` maps a model id to (input $ per million tokens, output $ per million tokens). Return the cost in dollars rounded to 6 places. Raise KeyError for an unknown model."}, {"fn": "TokenBucket", "title": "Token bucket rate limiter", "diff": "M", "kind": "problems", "doc": "https://platform.claude.com/docs/en/api/rate-limits", "task": "A rate limiter: holds up to `capacity` tokens and refills `rate` tokens per second."}, {"fn": "luhn_valid", "title": "Luhn check", "diff": "E", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/Luhn_algorithm", "task": "Return True if the digits in `number` (ignore spaces and dashes) pass the Luhn checksum: from the right, double every second digit, subtract 9 from results over 9, and the total must divide by 10. Fewer than 2 digits is False."}, {"fn": "mask_secrets", "title": "Mask secrets in logs", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks", "task": "Replace secrets with [SECRET]: Anthropic-style keys (sk-ant- followed by letters, digits, - or _), AWS access key ids (AKIA + 16 upper-case letters or digits), and bearer tokens (\"Bearer \" + the token: keep the word Bearer)."}, {"fn": "moderate", "title": "Moderate output", "diff": "E", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks", "task": "Return (ok, hits): hits are the blocklist words found in `text` as whole words, case-insensitive, in blocklist order. ok is True when there are no hits."}, {"fn": "red_team", "title": "Red-team with a canary", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks", "task": "Send each attack prompt through `fn`. Return the attacks whose reply contains any forbidden string (case-insensitive): those are the leaks."}, {"fn": "trim_history", "title": "Trim chat history", "diff": "M", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks", "task": "Keep the conversation under budget by dropping the oldest messages (always keep the last one). Count each message as ceil(len(content) / 4) tokens. Return the shortest suffix-trimmed list whose total fits, or just the last message."}, {"fn": "guarded_ask", "title": "Guarded Claude call", "diff": "H", "kind": "practice", "doc": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks", "task": "Wrap one Claude call in guardrails. If user_input looks like a prompt injection (it contains \"ignore previous instructions\" or \"reveal your system prompt\", case-insensitive), return {\"status\": \"blocked_input\", \"text\": \"\"} without calling Claude. Otherwise redact emails in the input to [EMAIL], call Claude (model MODEL, max_tokens 1024, `system`), and if the reply contains a blocklist word (whole word, case-insensitive) return {\"status\": \"blocked_output\", \"text\": \"\"}; else {\"status\": \"ok\", \"text\": reply}."}]}, {"id": "sdet", "name": "AI in the SDET process", "items": [{"fn": "boundary_values", "title": "Boundary value analysis", "diff": "E", "kind": "problems", "doc": "https://en.wikipedia.org/wiki/Boundary-value_analysis", "task": "Boundary value analysis for a valid range low..high: return [low - 1, low, low + 1, high - 1, high, high + 1], without duplicates, in that order."}, {"fn": "test_case_prompt", "title": "Test case generation prompt", "diff": "E", "kind": "problems", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "Build a prompt asking Claude for `count` test cases for the requirement, as a markdown table with exactly the columns | ID | Title | Steps | Expected |, covering positive, negative and boundary cases. Put the requirement inside <requirement> tags."}, {"fn": "parse_test_cases", "title": "Parse generated test cases", "diff": "M", "kind": "problems", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "Parse a markdown table into a list of dicts keyed by the header cells (stripped). Skip the |---|---| separator row and any line that is not a table row. Ignore text around the table."}, {"fn": "flaky_tests", "title": "Find flaky tests", "diff": "M", "kind": "problems", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "`history` maps a test name to its recent results (\"pass\"/\"fail\"), oldest first. A flip is a change between consecutive results. Return the sorted names with at least `min_flips` flips."}, {"fn": "failure_signature", "title": "Failure signature", "diff": "M", "kind": "problems", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "Normalise an error message so the same failure groups together: replace hex ids (0x...) and long hex strings (8+ hex chars) with <ID>, numbers with <N>, quoted strings with <S>, and collapse whitespace."}, {"fn": "group_failures", "title": "Group failures", "diff": "M", "kind": "problems", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "`failures` maps a test name to its error message. Group the test names (sorted) by failure_signature(message)."}, {"fn": "pairwise", "title": "Pairwise test design", "diff": "H", "kind": "practice", "doc": "https://en.wikipedia.org/wiki/All-pairs_testing", "task": "All-pairs test design: return a list of test combinations (dicts of param -> value) such that every pair of values of every two parameters appears in at least one test. Greedy: start from the full cartesian product in order and repeatedly take the combination covering the most uncovered pairs (the first one on a tie) until every pair is covered."}, {"fn": "heal_locator", "title": "Self-healing locator", "diff": "M", "kind": "practice", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "Self-healing locator: the element described by `old` (attributes like id, text, role, class) is gone. Score each candidate by how many of old's attributes it matches exactly (the \"id\" attribute counts 3, \"text\" counts 2, others 1). Return the index of the best candidate, or -1 if none scores above 0. Ties go to the earlier candidate."}, {"fn": "prioritize", "title": "Risk-based test selection", "diff": "M", "kind": "practice", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "Each test has {\"covers\": [files], \"recent_failures\": n}. Risk = 2 * (number of changed files it covers) + recent_failures. Return the names of tests with risk > 0, highest first, ties by name."}, {"fn": "parse_gherkin", "title": "Parse Gherkin", "diff": "M", "kind": "practice", "doc": "https://cucumber.io/docs/gherkin/reference/", "task": "Parse Gherkin into {\"feature\": name, \"scenarios\": [{\"name\": .., \"steps\": [..]}]}. Lines start with \"Feature:\", \"Scenario:\" or a step keyword (Given, When, Then, And, But); keep each step line stripped. Ignore other lines."}, {"fn": "generate_test_data", "title": "Seeded test data", "diff": "M", "kind": "practice", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "Make `n` rows with random.Random(seed). For each field (in schema order): {\"type\": \"int\", \"min\", \"max\"} -> rng.randint(min, max); {\"type\": \"choice\", \"values\"} -> rng.choice(values); {\"type\": \"email\"} -> \"user<k>@example.com\" where k is the row number from 1."}, {"fn": "triage", "title": "Triage a failure with Claude", "diff": "M", "kind": "practice", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "Ask Claude to classify a failed test as one of TRIAGE_LABELS, giving the test name and log in <test> and <log> tags and asking for the answer inside <category></category> tags. Return the category, or \"needs_human\" if the reply has no valid one."}, {"fn": "review_generated_tests", "title": "Review AI-written tests", "diff": "M", "kind": "practice", "doc": "https://docs.pytest.org/en/stable/how-to/parametrize.html", "task": "Review test cases a model wrote (dicts with ID, Title, Steps, Expected). Return problems as strings: \"<ID>: missing <field>\" for an empty or absent field, \"<ID>: duplicate title\" when the title (case-insensitive) already appeared, and \"<ID>: vague expected\" when Expected is one of \"works\", \"ok\", \"as expected\", \"success\" (case-insensitive)."}]}];
+
+  // [title, topics, weekly goal, SDET deliverable for the week]
+  const WEEKS = [
+    ["ML basics and metrics", ["ml_basics", "metrics"], "Explain train/test split, overfitting and precision vs recall in your own words", "Score a fake classifier: confusion matrix, precision, recall, F1"],
+    ["Text, tokens and embeddings", ["nlp", "embeddings"], "Know what a token is and why cosine similarity finds meaning", "Find duplicate bug reports with embeddings"],
+    ["Prompt engineering with Claude", ["prompts"], "Build Messages API requests and read answers safely (tags, JSON, stop reasons)", "A QA-assistant system prompt plus a JSON schema check on its output"],
+    ["Testing LLM apps", ["llm_testing"], "Test non-deterministic output: golden sets, judges, retries, cost", "A golden-set regression suite that runs offline with FakeClaude"],
+    ["Retrieval-augmented generation", ["rag"], "Chunk, retrieve, cite, and measure retrieval with recall@k and MRR", "A RAG test that fails on made-up citations"],
+    ["Tool use and agents", ["agents"], "Run the tool-use loop and keep it bounded, validated and approved", "An agent test that asserts the tool trajectory"],
+    ["Safety, guardrails and cost", ["guardrails"], "Guard inputs and outputs; budget tokens and requests", "A red-team suite with a canary secret"],
+    ["AI in the SDET process", ["sdet"], "Use Claude across the test life cycle, with code that checks its work", "Generate, review and triage tests for one real feature at work"],
+  ];
+
+  const TOPICS = CATALOG.map(({ id, name }) => ({ id, name }));
+  const topicName = Object.fromEntries(TOPICS.map((t) => [t.id, t.name]));
+  const weekOf = {};
+  WEEKS.forEach(([, ts], i) => ts.forEach((t) => (weekOf[t] = i + 1)));
+
+  const BASE = [];
+  for (const t of CATALOG) {
+    for (const it of t.items) {
+      BASE.push({
+        id: t.id + "-" + it.fn, topic: t.id, title: it.title, diff: it.diff, fn: it.fn, kind: it.kind, task: it.task,
+        url: it.doc,
+        exercise: REPO + "exercises/" + t.id + "/" + it.kind + ".py",
+        solution: REPO + "solutions/" + t.id + "/" + it.kind + ".py",
+      });
+    }
+  }
+
+  // ---- state ----
+  let progress = {}; // id -> {status, notes, solvedOn, updatedAt}
+  let custom = {}; // docId -> {title, topic, diff, url, createdAt}
+  let log = {}; // "YYYY-MM-DD" -> {minutes, note, updatedAt}
+  let mode = "loading"; // loading | db | local | readonly
+  let db = null;
+  const filter = { q: "", status: "all", diff: "all", topics: null, label: "" };
+  const openNotes = new Set();
+  let listDirty = false;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const pad = (n) => String(n).padStart(2, "0");
+  const dayKey = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const today = () => dayKey(new Date());
+  const statusOf = (id) => (progress[id] && progress[id].status) || "todo";
+  const isDone = (s) => s === "solved" || s === "revise";
+
+  function allProblems() {
+    const extra = Object.entries(custom)
+      .filter(([, c]) => c && c.title && topicName[c.topic])
+      .sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0))
+      .map(([docId, c]) => ({
+        id: "c-" + docId, docId, custom: true, topic: c.topic, title: c.title,
+        diff: DIFFS[c.diff] ? c.diff : "M", url: /^https?:\/\//i.test(c.url || "") ? c.url : null,
+      }));
+    return BASE.concat(extra);
+  }
+
+  // Prompts for learning with Claude: hints first, solution only when asked, then a review.
+  function claudePrompt(p, mode) {
+    const where = `src/exercises/${p.topic}/${p.kind}.py, function ${p.fn}`;
+    if (mode === "review") {
+      return `I'm an SDET learning AI fundamentals in Python. Review my solution to this exercise (${where}).\n\nTask: ${p.task}\n\nCheck correctness and edge cases, compare it with the simplest idiomatic approach, and tell me how I would test this in a real AI feature at work. Then ask me one follow-up interview question.\n\nMy code:\n\`\`\`python\n# paste your code here\n\`\`\``;
+    }
+    return `I'm an SDET learning AI fundamentals in Python, week ${weekOf[p.topic]} (${topicName[p.topic]}). Exercise "${p.title}" (${where}).\n\nTask: ${p.task}\n\nTeach me the idea behind it in plain words with a tiny example, explain why it matters for testing AI systems, then give me ONE hint at a time. Don't write the solution code unless I ask for it.`;
+  }
+  const claudeUrl = (p, mode) => CLAUDE_NEW + encodeURIComponent(claudePrompt(p, mode));
+
+  // ---- sync status ----
+  function setSync(state, text) {
+    const el = $("sync");
+    el.dataset.state = state;
+    el.textContent = text;
+  }
+  let pendingWrites = 0;
+  function refreshSync() {
+    if (mode === "db") setSync(pendingWrites ? "saving" : "synced", pendingWrites ? "Saving…" : "Synced across your devices");
+    else if (mode === "local") setSync("local", "Saved on this device only");
+    else if (mode === "readonly") setSync("readonly", "View only");
+  }
+
+  // ---- storage ----
+  const LS_KEY = "ai-fundamentals-tracker-v1";
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        progress = data.progress || {};
+        custom = data.custom || {};
+        log = data.log || {};
+      }
+    } catch (e) { /* storage unavailable: start empty */ }
+  }
+  function saveLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ progress, custom, log })); } catch (e) { /* ignore */ }
+  }
+
+  const chains = {};
+  function queueWrite(key, fn) {
+    pendingWrites++;
+    refreshSync();
+    const run = async () => {
+      try { await fn(); }
+      catch (e) {
+        if (e && e.code === "unavailable") {
+          await new Promise((r) => setTimeout(r, 400 + Math.random() * 800));
+          try { await fn(); return; } catch (e2) { e = e2; }
+        }
+        handleWriteError(e);
+      } finally {
+        pendingWrites--;
+        refreshSync();
+      }
+    };
+    chains[key] = (chains[key] || Promise.resolve()).then(run);
+    return chains[key];
+  }
+  function handleWriteError(e) {
+    const code = e && e.code;
+    if (code === "invalid_argument" || code === "not_granted") {
+      mode = "readonly";
+      renderAll();
+    } else if (code === "quota_exceeded") {
+      setSync("error", "Storage is full. Remove some custom exercises.");
+    } else {
+      setSync("error", "Couldn't save. Check your connection and try again.");
+    }
+  }
+
+  function writeProgress(id) {
+    if (mode === "local") return saveLocal();
+    if (mode !== "db") return;
+    const body = Object.assign({}, progress[id]);
+    queueWrite("p:" + id, () => db.collection("progress").doc(id).set(body));
+  }
+
+  // ---- actions ----
+  function setStatus(id, status) {
+    const cur = progress[id] || {};
+    const next = Object.assign({}, cur, { status, updatedAt: Date.now() });
+    if (isDone(status)) { if (!cur.solvedOn) next.solvedOn = today(); }
+    else delete next.solvedOn;
+    progress[id] = next;
+    writeProgress(id);
+    renderAll();
+  }
+
+  const noteTimers = {};
+  function setNotes(id, text, immediate) {
+    progress[id] = Object.assign({ status: "todo" }, progress[id], { notes: text.slice(0, 4000), updatedAt: Date.now() });
+    clearTimeout(noteTimers[id]);
+    if (immediate) writeProgress(id);
+    else noteTimers[id] = setTimeout(() => writeProgress(id), 800);
+  }
+
+  function addCustom(data) {
+    const docId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    custom[docId] = data;
+    if (mode === "local") saveLocal();
+    else if (mode === "db") queueWrite("c:" + docId, () => db.collection("custom").doc(docId).set(data));
+    renderAll();
+  }
+
+  function removeCustom(docId) {
+    const pid = "c-" + docId;
+    delete custom[docId];
+    delete progress[pid];
+    openNotes.delete(pid);
+    if (mode === "local") saveLocal();
+    else if (mode === "db") {
+      queueWrite("c:" + docId, () => db.collection("custom").doc(docId).delete());
+      queueWrite("p:" + pid, () => db.collection("progress").doc(pid).delete());
+    }
+    renderAll();
+  }
+
+  function saveLog(date, minutes, note) {
+    const entry = { minutes, note, updatedAt: Date.now() };
+    if (!minutes && !note) delete log[date];
+    else log[date] = entry;
+    if (mode === "local") saveLocal();
+    else if (mode === "db") {
+      queueWrite("l:" + date, () => (log[date] ? db.collection("log").doc(date).set(entry) : db.collection("log").doc(date).delete()));
+    }
+    renderAll();
+  }
+
+  // ---- rendering ----
+  function counts(list) {
+    const c = { todo: 0, attempted: 0, solved: 0, revise: 0 };
+    for (const p of list) c[statusOf(p.id)]++;
+    return c;
+  }
+
+  // A study day is a day with a finished exercise or a log entry.
+  function activityPerDay(all) {
+    const perDay = {};
+    for (const p of all) {
+      const r = progress[p.id];
+      if (r && isDone(r.status) && r.solvedOn) perDay[r.solvedOn] = (perDay[r.solvedOn] || 0) + 1;
+    }
+    for (const d in log) if (log[d] && (log[d].minutes || log[d].note)) perDay[d] = Math.max(perDay[d] || 0, 1);
+    return perDay;
+  }
+
+  function renderSummary(all) {
+    const c = counts(all);
+    const total = all.length;
+    const done = c.solved + c.revise;
+    $("done").textContent = done;
+    $("total").textContent = total;
+    $("total-count").textContent = total;
+    for (const s of ["solved", "revise", "attempted", "todo"]) $("n-" + s).textContent = c[s];
+    $("stack").innerHTML = ["solved", "revise", "attempted"]
+      .map((s) => `<i class="s-${s}" style="width:${total ? (c[s] / total) * 100 : 0}%"></i>`).join("");
+
+    const byDiff = { E: 0, M: 0, H: 0 };
+    for (const p of all) if (isDone(statusOf(p.id))) byDiff[p.diff]++;
+    $("easy-med-hard").textContent = `${byDiff.E}·${byDiff.M}·${byDiff.H}`;
+
+    const perDay = activityPerDay(all);
+    const d = new Date();
+    if (!perDay[dayKey(d)]) d.setDate(d.getDate() - 1); // streak survives until today ends
+    let streak = 0;
+    while (perDay[dayKey(d)]) { streak++; d.setDate(d.getDate() - 1); }
+    $("streak").textContent = streak;
+    let last7 = 0;
+    const w = new Date();
+    for (let i = 0; i < 7; i++) {
+      const k = dayKey(w);
+      for (const p of all) { const r = progress[p.id]; if (r && isDone(r.status) && r.solvedOn === k) last7++; }
+      w.setDate(w.getDate() - 1);
+    }
+    $("week-solves").textContent = last7;
+    renderHeat(perDay);
+
+    // next up: first unfinished exercise in the earliest unfinished week
+    let cur = WEEKS.length;
+    for (let i = 0; i < WEEKS.length; i++) {
+      const inWeek = all.filter((p) => WEEKS[i][1].includes(p.topic));
+      if (inWeek.some((p) => !isDone(statusOf(p.id)))) { cur = i; break; }
+    }
+    const next = $("next");
+    if (cur === WEEKS.length) {
+      next.innerHTML = `<span class="label">All 8 weeks done</span><span>Mark exercises as <b>Revise</b> to come back to them, then build an AI test suite for a real feature at work.</span>`;
+    } else {
+      const order = WEEKS[cur][1];
+      const candidates = all.filter((p) => order.includes(p.topic) && !isDone(statusOf(p.id)))
+        .sort((a, b) => order.indexOf(a.topic) - order.indexOf(b.topic));
+      const p = candidates.find((x) => statusOf(x.id) === "attempted") || candidates[0];
+      const link = p.exercise ? `<a href="${esc(p.exercise)}" target="_blank" rel="noopener">${esc(p.title)} ↗</a>` : `<b>${esc(p.title)}</b>`;
+      next.innerHTML = `<span class="label">Next up · Week ${cur + 1}</span><span class="goal"><b>Goal:</b> ${esc(WEEKS[cur][2])}</span>${link}${p.task ? `<span class="task">${esc(p.task)}</span>` : ""}<span class="meta">${p.fn ? `<span class="mono">${esc(p.fn)}</span>` : ""}<span class="diff" data-d="${p.diff}">${DIFFS[p.diff]}</span><span>${esc(topicName[p.topic])}</span></span>${p.task ? `<a class="act ask" href="${esc(claudeUrl(p, "hint"))}" target="_blank" rel="noopener">Learn it with Claude ↗</a>` : ""}`;
+    }
+    renderWeeks(all, cur);
+  }
+
+  function renderLog() {
+    const days = Object.keys(log).filter((k) => log[k]).sort().reverse();
+    let week = 0;
+    let totalMin = 0;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 6);
+    const cut = dayKey(cutoff);
+    for (const k of days) {
+      const m = +log[k].minutes || 0;
+      totalMin += m;
+      if (k >= cut) week += m;
+    }
+    $("log-days").textContent = days.length;
+    $("log-week").textContent = week;
+    $("log-total").textContent = Math.round((totalMin / 60) * 10) / 10;
+    $("log-list").innerHTML = days.slice(0, 7).map((k) => {
+      const e = log[k];
+      const date = new Date(k + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      return `<li><button type="button" class="log-item" data-day="${k}"><span class="log-d">${esc(date)}</span><span class="mono">${e.minutes ? esc(e.minutes) + " min" : ""}</span>${e.note ? `<span class="log-n">${esc(e.note)}</span>` : ""}</button></li>`;
+    }).join("") || `<li class="empty-log">Nothing logged yet. Save a line about today's practice.</li>`;
+    const ro = mode === "readonly" || mode === "loading";
+    for (const id of ["l-date", "l-min", "l-note", "l-save"]) $(id).disabled = ro;
+  }
+
+  function fillLogForm(date) {
+    const e = log[date] || {};
+    $("l-date").value = date;
+    $("l-min").value = e.minutes || "";
+    $("l-note").value = e.note || "";
+    $("l-save").textContent = date === today() ? "Save today" : "Save this day";
+  }
+
+  function renderWeeks(all, cur) {
+    $("weeks").innerHTML = WEEKS.map(([title, ts], i) => {
+      const inWeek = all.filter((p) => ts.includes(p.topic));
+      const d = inWeek.filter((p) => isDone(statusOf(p.id))).length;
+      const pct = inWeek.length ? (d / inWeek.length) * 100 : 0;
+      const pressed = filter.label === "Week " + (i + 1);
+      return `<button type="button" class="week${i === cur ? " current" : ""}" data-week="${i}" aria-pressed="${pressed}">
+        <span class="wk"><span>W${i + 1}</span>${pct === 100 ? "<em>✓</em>" : `<span>${d}/${inWeek.length}</span>`}</span>
+        <span class="wt" title="${esc(WEEKS[i][2])}">${esc(title)}</span>
+        <span class="bar"><i style="width:${pct}%"></i></span></button>`;
+    }).join("");
+  }
+
+  function renderTopics(all) {
+    $("topics").innerHTML = TOPICS.map((t) => {
+      const inT = all.filter((p) => p.topic === t.id);
+      const d = inT.filter((p) => isDone(statusOf(p.id))).length;
+      const pct = inT.length ? (d / inT.length) * 100 : 0;
+      const pressed = filter.label === t.name;
+      return `<button type="button" class="topic" data-topic="${t.id}" aria-pressed="${pressed}">
+        <span>${esc(t.name)}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="n mono">${d}/${inT.length}</span></button>`;
+    }).join("");
+  }
+
+  function renderHeat(perDay) {
+    const end = new Date();
+    const dow = (end.getDay() + 6) % 7; // Monday = 0
+    const start = new Date(end);
+    start.setDate(end.getDate() - dow - 7 * 11);
+    $("heat-start").textContent = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const cells = [];
+    const t = today();
+    for (let i = 0; i < 84; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const k = dayKey(d);
+      if (d > end) { cells.push(`<i style="visibility:hidden"></i>`); continue; }
+      const n = perDay[k] || 0;
+      const l = n === 0 ? 0 : n === 1 ? 1 : n <= 3 ? 2 : 3;
+      const mins = log[k] && log[k].minutes ? `, ${log[k].minutes} min` : "";
+      cells.push(`<i data-l="${l}" class="${k === t ? "today" : ""}" title="${k}: ${n} done${mins}"></i>`);
+    }
+    $("heat").innerHTML = cells.join("");
+  }
+
+  function renderChips() {
+    const st = [["all", "All"]].concat(STATUSES);
+    $("status-chips").innerHTML = st.map(([v, l]) => `<button type="button" class="chip" data-status="${v}" aria-pressed="${filter.status === v}">${l}</button>`).join("");
+    const df = [["all", "Any level"], ["E", "Easy"], ["M", "Medium"], ["H", "Hard"]];
+    $("diff-chips").innerHTML = df.map(([v, l]) => `<button type="button" class="chip" data-diff="${v}" aria-pressed="${filter.diff === v}">${l}</button>`).join("");
+    const note = $("filter-note");
+    note.hidden = !filter.topics;
+    if (filter.topics) {
+      const wk = /^Week (\d+)$/.exec(filter.label);
+      const extra = wk ? `<span class="week-goal"><b>Goal:</b> ${esc(WEEKS[+wk[1] - 1][2])}<br><b>SDET deliverable:</b> ${esc(WEEKS[+wk[1] - 1][3])}</span>` : "";
+      note.innerHTML = `Showing <b>${esc(filter.label)}</b> <button type="button" class="linkbtn" id="clear-topic">Show all topics</button>${extra}`;
+    }
+  }
+
+  function matches(p) {
+    if (filter.topics && !filter.topics.includes(p.topic)) return false;
+    if (filter.status !== "all" && statusOf(p.id) !== filter.status) return false;
+    if (filter.diff !== "all" && p.diff !== filter.diff) return false;
+    if (filter.q) {
+      const q = filter.q.toLowerCase();
+      if (!p.title.toLowerCase().includes(q) && !(p.fn || "").toLowerCase().includes(q) && !(p.task || "").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  }
+
+  function rowHtml(p) {
+    const r = progress[p.id] || {};
+    const s = statusOf(p.id);
+    const ro = mode === "readonly" || mode === "loading";
+    const open = openNotes.has(p.id);
+    const opts = STATUSES.map(([v, l]) => `<option value="${v}"${v === s ? " selected" : ""}>${l}</option>`).join("");
+    const hasNote = !!(r.notes && r.notes.trim());
+    return `<div class="row" data-id="${esc(p.id)}" data-status="${s}">
+      <select class="status" data-s="${s}" aria-label="Status of ${esc(p.title)}" ${ro ? "disabled" : ""}>${opts}</select>
+      <div>
+        <div class="title">${esc(p.title)}</div>
+        <div class="meta">${p.fn ? `<span class="mono">${esc(p.fn)}</span>` : ""}<span class="diff" data-d="${p.diff}">${DIFFS[p.diff]}</span>${p.kind === "practice" ? "<span>practice</span>" : ""}${r.solvedOn && isDone(s) ? `<span>done ${esc(r.solvedOn)}</span>` : ""}${p.custom ? "<span>added by you</span>" : ""}</div>
+      </div>
+      <div class="acts">
+        ${p.exercise ? `<a class="act" href="${esc(p.exercise)}" target="_blank" rel="noopener">Exercise ↗</a>` : ""}
+        ${p.solution ? `<a class="act" href="${esc(p.solution)}" target="_blank" rel="noopener">Solution ↗</a>` : ""}
+        ${p.url ? `<a class="act" href="${esc(p.url)}" target="_blank" rel="noopener">Docs ↗</a>` : ""}
+        ${p.task ? `<a class="act ask" href="${esc(claudeUrl(p, "hint"))}" target="_blank" rel="noopener" title="Opens Claude with a hint-only tutoring prompt">Hint ↗</a><a class="act ask" href="${esc(claudeUrl(p, "review"))}" target="_blank" rel="noopener" title="Opens Claude with a code-review prompt; paste your code">Review ↗</a>` : ""}
+        <button type="button" class="act${hasNote ? " has-note" : ""}" data-notes aria-expanded="${open}">${hasNote ? "Notes •" : "Notes"}</button>
+      </div>
+      ${open ? `<div class="notes">
+        ${p.task ? `<p class="task">${esc(p.task)}</p>` : ""}
+        <label class="label" for="n-${esc(p.id)}">Your notes: the idea, mistakes, what Claude taught you</label>
+        <textarea id="n-${esc(p.id)}" data-note ${ro ? "readonly" : ""} placeholder="e.g. Missed the zero-vector edge case. Claude's 2nd hint: what is |v| when v is all zeros?">${esc(r.notes || "")}</textarea>
+        ${p.custom && !ro ? `<button type="button" class="act danger" data-remove="${esc(p.docId)}">Remove this exercise</button>` : ""}
+      </div>` : ""}
+    </div>`;
+  }
+
+  function renderList(all) {
+    if (document.activeElement && document.activeElement.matches && document.activeElement.matches("textarea[data-note]")) {
+      listDirty = true; // don't replace the textarea while someone types in it
+      return;
+    }
+    listDirty = false;
+    const groups = TOPICS.map((t) => [t, all.filter((p) => p.topic === t.id && matches(p))]).filter(([, ps]) => ps.length);
+    if (!groups.length) {
+      $("list").innerHTML = `<p class="empty">No exercises match these filters.</p>`;
+      return;
+    }
+    $("list").innerHTML = groups.map(([t, ps]) => {
+      const inT = all.filter((p) => p.topic === t.id);
+      const d = inT.filter((p) => isDone(statusOf(p.id))).length;
+      return `<section class="group"><div class="group-head"><h3>${esc(t.name)}</h3><span class="mono">Week ${weekOf[t.id]} · ${d}/${inT.length}</span></div>${ps.map(rowHtml).join("")}</section>`;
+    }).join("");
+  }
+
+  function renderAll() {
+    const all = allProblems();
+    renderSummary(all);
+    renderTopics(all);
+    renderChips();
+    renderList(all);
+    renderLog();
+    refreshSync();
+  }
+
+  // ---- events ----
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.status) { filter.status = t.dataset.status; renderAll(); }
+    else if (t.dataset.diff) { filter.diff = t.dataset.diff; renderAll(); }
+    else if (t.dataset.day) { fillLogForm(t.dataset.day); $("l-note").focus(); }
+    else if (t.dataset.week) {
+      const i = +t.dataset.week;
+      const label = "Week " + (i + 1);
+      if (filter.label === label) { filter.topics = null; filter.label = ""; }
+      else { filter.topics = WEEKS[i][1]; filter.label = label; }
+      renderAll();
+    } else if (t.dataset.topic) {
+      const name = topicName[t.dataset.topic];
+      if (filter.label === name) { filter.topics = null; filter.label = ""; }
+      else { filter.topics = [t.dataset.topic]; filter.label = name; }
+      renderAll();
+      if (window.matchMedia("(max-width: 959px)").matches) $("q").scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (t.id === "clear-topic") { filter.topics = null; filter.label = ""; renderAll(); }
+    else if (t.hasAttribute("data-notes")) {
+      const id = t.closest(".row").dataset.id;
+      if (openNotes.has(id)) openNotes.delete(id); else openNotes.add(id);
+      renderAll();
+      if (openNotes.has(id)) { const ta = document.getElementById("n-" + id); if (ta) ta.focus(); }
+    } else if (t.dataset.remove) {
+      if (t.dataset.confirm) removeCustom(t.dataset.remove);
+      else {
+        t.dataset.confirm = "1";
+        t.textContent = "Tap again to remove";
+        setTimeout(() => { if (t.isConnected) { delete t.dataset.confirm; t.textContent = "Remove this exercise"; } }, 3000);
+      }
+    }
+  });
+
+  document.addEventListener("change", (e) => {
+    if (e.target.matches("select.status")) setStatus(e.target.closest(".row").dataset.id, e.target.value);
+    if (e.target.id === "l-date" && /^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) fillLogForm(e.target.value);
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.matches("textarea[data-note]")) setNotes(e.target.closest(".row").dataset.id, e.target.value, false);
+  });
+  document.addEventListener("focusout", (e) => {
+    if (e.target.matches("textarea[data-note]")) {
+      const id = e.target.closest(".row").dataset.id;
+      if (noteTimers[id]) { clearTimeout(noteTimers[id]); noteTimers[id] = null; writeProgress(id); }
+      setTimeout(() => { if (listDirty) renderAll(); else renderSummary(allProblems()); renderTopics(allProblems()); }, 0);
+    }
+  });
+
+  let qTimer;
+  $("q").addEventListener("input", (e) => {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(() => { filter.q = e.target.value.trim(); renderList(allProblems()); }, 120);
+  });
+
+  $("log-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = $("l-err");
+    err.hidden = true;
+    const date = $("l-date").value;
+    const minRaw = $("l-min").value.trim();
+    const note = $("l-note").value.trim().slice(0, 2000);
+    if (mode === "readonly" || mode === "loading") { err.textContent = "You can't log days in view-only mode."; err.hidden = false; return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { err.textContent = "Pick a date."; err.hidden = false; return; }
+    if (date > today()) { err.textContent = "That date is in the future."; err.hidden = false; return; }
+    if (minRaw && !(/^\d{1,4}$/.test(minRaw) && +minRaw <= 1440)) { err.textContent = "Minutes should be a whole number up to 1440."; err.hidden = false; return; }
+    saveLog(date, minRaw ? +minRaw : 0, note);
+    $("l-save").textContent = "Saved ✓";
+    setTimeout(() => { $("l-save").textContent = $("l-date").value === today() ? "Save today" : "Save this day"; }, 1500);
+  });
+
+  $("f-topic").innerHTML = TOPICS.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join("");
+  $("add-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = $("f-err");
+    const title = $("f-title").value.trim();
+    const url = $("f-url").value.trim();
+    err.hidden = true;
+    if (mode === "readonly" || mode === "loading") { err.textContent = "You can't add exercises in view-only mode."; err.hidden = false; return; }
+    if (!title) { err.textContent = "Enter an exercise name."; err.hidden = false; return; }
+    if (url && !/^https?:\/\//i.test(url)) { err.textContent = "Links must start with https://"; err.hidden = false; return; }
+    addCustom({ title, topic: $("f-topic").value, diff: $("f-diff").value, url: url || null, createdAt: Date.now() });
+    $("f-title").value = ""; $("f-url").value = "";
+  });
+
+  // ---- boot ----
+  fillLogForm(today());
+  renderAll();
+
+  (async () => {
+    const api = window.claude && typeof window.claude.use === "function" ? window.claude : null;
+    const [dbNs, user] = api ? await Promise.all([api.use("db").catch(() => null), api.use("user").catch(() => null)]) : [null, null];
+    if (!dbNs) {
+      mode = "local";
+      loadLocal();
+      fillLogForm(today());
+      renderAll();
+      return;
+    }
+    db = dbNs;
+    let owner = true;
+    if (user) { try { owner = await user.isOwner(); } catch (e) { owner = true; } }
+    mode = owner ? "db" : "readonly";
+    const onErr = (e) => {
+      if (e && e.code === "revoked") { mode = "readonly"; renderAll(); }
+      else setSync("error", "Lost connection to your saved progress. Reload the page.");
+    };
+    db.collection("progress").onSnapshot((snap) => {
+      const next = {};
+      snap.docs.forEach((d) => { if (d.exists) next[d.id] = Object.assign({}, d.data()); });
+      // keep a note that is still being typed locally
+      for (const id in noteTimers) if (noteTimers[id] && progress[id]) next[id] = Object.assign({}, next[id], { notes: progress[id].notes });
+      progress = next;
+      renderAll();
+    }, onErr);
+    db.collection("custom").onSnapshot((snap) => {
+      const next = {};
+      snap.docs.forEach((d) => { if (d.exists) next[d.id] = Object.assign({}, d.data()); });
+      custom = next;
+      renderAll();
+    }, onErr);
+    let firstLog = true;
+    db.collection("log").onSnapshot((snap) => {
+      const next = {};
+      snap.docs.forEach((d) => { if (d.exists) next[d.id] = Object.assign({}, d.data()); });
+      log = next;
+      const typing = document.activeElement && ["l-min", "l-note"].includes(document.activeElement.id);
+      if (firstLog && !typing) fillLogForm($("l-date").value || today());
+      firstLog = false;
+      renderAll();
+    }, onErr);
+    renderAll();
+  })();
+})();
+</script>
